@@ -33,6 +33,7 @@ def upload():
     return jsonify({"message": "Data uploaded", "count": len(attendees)})
 
 
+# Download XLSX with attendees' data, including collected items
 @app.route('/download/xlsx', methods=['GET'])
 def download_attendees_xlsx():
     df = pd.DataFrame(attendees)
@@ -42,25 +43,24 @@ def download_attendees_xlsx():
     return send_file(filepath, as_attachment=True)
 
 
-@app.route('/download/pdf', methods=['GET'])
-def download_attendees_pdf():
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="Attendee List", ln=True, align='C')
-    for attendee in attendees:
-        items = ', '.join(attendee['items_received'])
-        pdf.cell(
-            200,
-            10,
-            txt=f"{attendee['name']} - {attendee['designation']} - {items}",
-            ln=True,
-        )
-    filepath = os.path.join(DOWNLOADS_FOLDER, 'attendees.pdf')
-    pdf.output(filepath)
-    return send_file(filepath, as_attachment=True)
+@app.route('/upload', methods=['POST'])
+def upload():
+    file = request.files['file']
+    df = pd.read_excel(file)
+    attendees.clear()
+    for _, row in df.iterrows():
+        attendees.append({
+            "name": row["Name"],
+            "mobile_no": row["Mobile No"],
+            "email_id": row["Email ID"],
+            "organisation": row["Company / Organisation"],
+            "items_received": [],  # Initialize as empty if no items
+        })
+    return jsonify({"message": "Data uploaded", "count": len(attendees)})
 
 
+
+# Add new attendee or update items collected
 @app.route('/attendees', methods=['GET', 'POST'])
 def attendees_data():
     if request.method == 'POST':
@@ -70,10 +70,11 @@ def attendees_data():
     return jsonify(attendees)
 
 
+# Add new attendee
 @app.route('/add', methods=['POST'])
 def add_attendee():
     data = request.json
-    attendees.append(data)  # Add new guest to the list.
+    attendees.append(data)
     return jsonify({"message": "Attendee added", "count": len(attendees)})
 
 
