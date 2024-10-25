@@ -13,6 +13,7 @@ DOWNLOADS_FOLDER = os.path.join(os.path.expanduser('~'), 'Downloads')
 def hello():
     return "Hello, World!"
 
+
 # Convert XLSX to JSON and store in 'attendees'
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -24,32 +25,42 @@ def upload():
         attendees.append({
             "name": row["Name"],
             "designation": row["Designation"],
-            "items_received": items
+            "items_received": items,
+            "mobile": row.get("Mobile No", ""),
+            "email": row.get("Email ID", ""),
+            "organisation": row.get("Company / Organisation", ""),
         })
     return jsonify({"message": "Data uploaded", "count": len(attendees)})
 
+
 @app.route('/download/xlsx', methods=['GET'])
-def download_xlsx():
+def download_attendees_xlsx():
     df = pd.DataFrame(attendees)
     df['Items'] = df['items_received'].apply(lambda x: ', '.join(x))
     filepath = os.path.join(DOWNLOADS_FOLDER, 'attendees.xlsx')
     df.to_excel(filepath, index=False)
     return send_file(filepath, as_attachment=True)
 
+
 @app.route('/download/pdf', methods=['GET'])
-def download_pdf():
+def download_attendees_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt="Attendee List", ln=True, align='C')
     for attendee in attendees:
         items = ', '.join(attendee['items_received'])
-        pdf.cell(200, 10, txt=f"{attendee['name']} - {attendee['designation']} - {items}", ln=True)
+        pdf.cell(
+            200,
+            10,
+            txt=f"{attendee['name']} - {attendee['designation']} - {items}",
+            ln=True,
+        )
     filepath = os.path.join(DOWNLOADS_FOLDER, 'attendees.pdf')
     pdf.output(filepath)
     return send_file(filepath, as_attachment=True)
 
-# Get attendees
+
 @app.route('/attendees', methods=['GET', 'POST'])
 def attendees_data():
     if request.method == 'POST':
@@ -58,51 +69,12 @@ def attendees_data():
         return jsonify({"message": "Attendee updated"})
     return jsonify(attendees)
 
-# Export attendees to XLSX
-@app.route('/download/xlsx', methods=['GET'])
-def download_xlsx():
-    df = pd.DataFrame(attendees)
-    df['Items'] = df['items_received'].apply(lambda x: ', '.join(x))
-    filepath = "attendees.xlsx"
-    df.to_excel(filepath, index=False)
-    return send_file(filepath, as_attachment=True)
-
-# Export attendees to PDF
-@app.route('/download/pdf', methods=['GET'])
-def download_pdf():
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="Attendee List", ln=True, align='C')
-    for attendee in attendees:
-        items = ', '.join(attendee['items_received'])
-        pdf.cell(200, 10, txt=f"{attendee['name']} - {attendee['designation']} - {items}", ln=True)
-    pdf.output("attendees.pdf")
-    return send_file("attendees.pdf", as_attachment=True)
-
 
 @app.route('/add', methods=['POST'])
 def add_attendee():
     data = request.json
     attendees.append(data)  # Add new guest to the list.
     return jsonify({"message": "Attendee added", "count": len(attendees)})
-
-
-@app.route('/upload', methods=['POST'])
-def upload():
-    file = request.files['file']
-    df = pd.read_excel(file)
-    attendees.clear()
-    for _, row in df.iterrows():
-        attendees.append({
-            "name": row["Name"],
-            "mobile": row["Mobile No"],
-            "email": row["Email ID"],
-            "organisation": row["Company / Organisation"],
-            "items_received": row["Items"].split(',') if pd.notna(row["Items"]) else [],
-        })
-    return jsonify({"message": "Data uploaded", "count": len(attendees)})
-
 
 
 if __name__ == '__main__':
