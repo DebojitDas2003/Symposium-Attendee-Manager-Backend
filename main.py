@@ -6,6 +6,8 @@ from fpdf import FPDF
 app = Flask(__name__)
 attendees = []  # In-memory storage
 
+DOWNLOADS_FOLDER = os.path.join(os.path.expanduser('~'), 'Downloads')
+
 
 @app.route("/")
 def hello():
@@ -25,6 +27,27 @@ def upload():
             "items_received": items
         })
     return jsonify({"message": "Data uploaded", "count": len(attendees)})
+
+@app.route('/download/xlsx', methods=['GET'])
+def download_xlsx():
+    df = pd.DataFrame(attendees)
+    df['Items'] = df['items_received'].apply(lambda x: ', '.join(x))
+    filepath = os.path.join(DOWNLOADS_FOLDER, 'attendees.xlsx')
+    df.to_excel(filepath, index=False)
+    return send_file(filepath, as_attachment=True)
+
+@app.route('/download/pdf', methods=['GET'])
+def download_pdf():
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Attendee List", ln=True, align='C')
+    for attendee in attendees:
+        items = ', '.join(attendee['items_received'])
+        pdf.cell(200, 10, txt=f"{attendee['name']} - {attendee['designation']} - {items}", ln=True)
+    filepath = os.path.join(DOWNLOADS_FOLDER, 'attendees.pdf')
+    pdf.output(filepath)
+    return send_file(filepath, as_attachment=True)
 
 # Get attendees
 @app.route('/attendees', methods=['GET', 'POST'])
