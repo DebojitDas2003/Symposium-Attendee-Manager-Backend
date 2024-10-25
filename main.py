@@ -88,6 +88,23 @@ def add_attendee():
     return jsonify({"message": "Attendee added", "count": len(attendees)})
 
 
+@app.route('/upload', methods=['POST'])
+def upload():
+    file = request.files['file']
+    df = pd.read_excel(file)
+    attendees.clear()
+    for _, row in df.iterrows():
+        attendees.append({
+            "name": row["Name"],
+            "mobile": row["Mobile No"],
+            "email": row["Email ID"],
+            "organisation": row["Company / Organisation"],
+            "items_received": row["Items"].split(',') if pd.notna(row["Items"]) else [],
+        })
+    return jsonify({"message": "Data uploaded", "count": len(attendees)})
+
+
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
